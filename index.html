@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>QWebChannel via WebSocket</title>
+    <script src="qwebchannel.js"></script>
+    <script src="script.js"></script>
+</head>
+<body>
+    <h2>Lista dati:</h2>
+    <ul id="dataList"></ul>
+
+    <button onclick="humBridge.triggerData()">Aggiorna dati</button>
+    <button onclick="humBridge.sendLog('Messaggio da browser')">Invia log</button>
+</body>
+</html>
