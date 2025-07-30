@@ -6,16 +6,19 @@
 #include <QWebChannel>
 #include <QHttpServer>
 #include <QTcpServer>
+#include <QSerialPort>
 #include <QFile>
 #include <QDir>
 #include <QDebug>
 #include "databridge.h"
-#include "WebSocketTransport.h"
+#include "websockettransport.h"
+#include "settings.h"
+#include "SystemKeyStore.h"
 
 int main(int argc, char *argv[]) {
     QCoreApplication a(argc, argv);
 
-    // Traduzioni Qt (non cambiate)
+    // Qt translations (unchanged)
     QTranslator translator;
     const QStringList uiLanguages = QLocale::system().uiLanguages();
     for (const QString &locale : uiLanguages) {
@@ -26,14 +29,85 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    // === 1. Avvia QWebSocketServer per QWebChannel ===
+    // ===  Loading settings ===
+    Settings settings;
+    settings.load();
+
+    // ===  Load humToken ===
+    SystemKeyStore systemStore;
+    QString fp = systemStore.getFingerprint();
+    bool newDevice = true;
+    QString humToken = systemStore.getToken();
+    qDebug() << "humToken =" << humToken;
+    if (humToken.isEmpty())
+    {
+        qWarning() << "Product registration in progress, internet connection required";
+
+    }
+
+
+    // === Open serial port using settings ===
+    QSerialPort *serial = new QSerialPort(&a);
+
+    serial->setPortName(settings.serialPort);
+
+    QStringList parts = settings.serialParams.split(',', Qt::SkipEmptyParts);
+    if (parts.size() == 4)
+    {
+        bool ok = false;
+
+        int baudRate = parts[0].toInt(&ok);
+        if (ok)
+        {
+            serial->setBaudRate(baudRate);
+        }
+        else
+        {
+            qWarning() << "Invalid baud rate:" << parts[0];
+        }
+
+        int dataBits = parts[1].toInt(&ok);
+        if (ok)
+        {
+            switch (dataBits)
+            {
+            case 5: serial->setDataBits(QSerialPort::Data5); break;
+            case 6: serial->setDataBits(QSerialPort::Data6); break;
+            case 7: serial->setDataBits(QSerialPort::Data7); break;
+            case 8: serial->setDataBits(QSerialPort::Data8); break;
+            default: qWarning() << "Invalid data bits:" << dataBits;
+            }
+        }
+
+        QString parity = parts[2].trimmed().toLower();
+        if (parity == "n") serial->setParity(QSerialPort::NoParity);
+        else if (parity == "e") serial->setParity(QSerialPort::EvenParity);
+        else if (parity == "o") serial->setParity(QSerialPort::OddParity);
+        else qWarning() << "Invalid parity:" << parity;
+
+        int stopBits = parts[3].toInt(&ok);
+        if (ok)
+        {
+            if (stopBits == 1) serial->setStopBits(QSerialPort::OneStop);
+            else if (stopBits == 2) serial->setStopBits(QSerialPort::TwoStop);
+            else qWarning() << "Invalid stop bits:" << stopBits;
+        }
+    }
+    else
+    {
+        qWarning() << "Invalid serialParams format, expected: baud,dataBits,parity,stopBits";
+    }
+
+
+
+    // ===  Start QWebSocketServer for QWebChannel ===
     QWebSocketServer server(QStringLiteral("QWebChannel Server"),
                             QWebSocketServer::NonSecureMode);
     if (!server.listen(QHostAddress::Any, 12345)) {
-        qCritical() << "Impossibile avviare WebSocketServer sulla porta 12345";
+        qCritical() << "Failed to start WebSocketServer on port 12345";
         return 1;
     }
-    qDebug() << "Server WebSocket in ascolto su ws://<host>:12345";
+    qDebug() << "WebSocket server listening on ws://<host>:12345";
 
     QWebChannel *channel = new QWebChannel();
     DataBridge *bridge = new DataBridge();
@@ -41,14 +115,14 @@ int main(int argc, char *argv[]) {
 
     QObject::connect(&server, &QWebSocketServer::newConnection, [&]() {
         QWebSocket *socket = server.nextPendingConnection();
-        qDebug() << "Nuova connessione WebSocket";
+        qDebug() << "New WebSocket connection";
 
         auto *transport = new WebSocketTransport(socket);
         QObject::connect(socket, &QWebSocket::disconnected, transport, &QObject::deleteLater);
         channel->connectTo(transport);
     });
 
-    // === 2. Avvia QHttpServer per servire index.html e qwebchannel.js ===
+    // ===  Start QHttpServer to serve index.html, qwebchannel.js, and script.js ===
     QHttpServer httpServer;
 
     const QString wwwRoot = QDir::currentPath();
@@ -73,19 +147,20 @@ int main(int argc, char *argv[]) {
             return QHttpServerResponse("application/javascript", file.readAll());
         return QHttpServerResponse(QHttpServerResponder::StatusCode::NotFound);
     });
-    // In ascolto su porta 8080 per richieste HTTP
+
+    // Listen on port 8080 for HTTP requests
     QTcpServer* tcpServer = new QTcpServer(&a);
     if (!tcpServer->listen(QHostAddress::Any, 8080)) {
-        qCritical() << "Impossibile avviare QTcpServer sulla porta 8080";
+        qCritical() << "Failed to start QTcpServer on port 8080";
         return 1;
     }
 
     if (!httpServer.bind(tcpServer)) {
-        qCritical() << "Impossibile fare bind di QHttpServer al QTcpServer";
+        qCritical() << "Failed to bind QHttpServer to QTcpServer";
         return 1;
     }
 
-    qDebug() << "Server HTTP in ascolto su http://<host>:8080/";
+    qDebug() << "HTTP server listening at http://<host>:8080/";
 
     return a.exec();
 }

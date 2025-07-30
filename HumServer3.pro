@@ -1,4 +1,4 @@
-QT += core websockets webchannel httpserver
+QT += core network websockets webchannel httpserver serialport
 
 CONFIG += c++17
 CONFIG += embed_translations
@@ -11,11 +11,15 @@ TEMPLATE = app
 
 SOURCES += \
     databridge.cpp \
-    main.cpp
+    main.cpp \
+    settings.cpp \
+    systemkeystore.cpp
 
 
 HEADERS += \
     databridge.h \
+    settings.h \
+    systemkeystore.h \
     websockettransport.h
 
 RESOURCES +=
