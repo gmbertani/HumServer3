@@ -1,4 +1,4 @@
-QT += core websockets webchannel
+QT += core websockets webchannel httpserver
 
 CONFIG += c++17
 CONFIG += embed_translations

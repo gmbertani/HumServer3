@@ -1,4 +1,9 @@
-const socket = new WebSocket("ws://localhost:12345");
+const wsProtocol = location.protocol === "https:" ? "wss" : "ws";
+const wsHost = location.hostname;
+const wsPort = 12345;
+
+const socket = new WebSocket(`${wsProtocol}://${wsHost}:${wsPort}`);
+
 
 socket.onopen = () => {
     new QWebChannel(socket, function(channel) {
