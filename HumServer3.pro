@@ -18,6 +18,7 @@ SOURCES += \
 
 HEADERS += \
     databridge.h \
+    humtoken.h \
     settings.h \
     systemkeystore.h \
     websockettransport.h
