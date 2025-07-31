@@ -6,6 +6,7 @@
 #include <QHostInfo>
 #include <QUuid>
 #include <QDebug>
+#include <QtGlobal>
 
 SystemKeyStore::SystemKeyStore(QObject *parent)
     : QObject(parent)
@@ -19,11 +20,13 @@ SystemKeyStore::SystemKeyStore(QObject *parent)
                              QCoreApplication::organizationName(),
                              QCoreApplication::applicationName(),
                              this);
+
+    tempToken = HumToken();
 }
 
-QString SystemKeyStore::getToken()
+QByteArray SystemKeyStore::getToken()
 {
-    QString token = readToken();
+    QByteArray token = readToken();
 
     if (token.isEmpty())
     {
@@ -37,23 +40,35 @@ QString SystemKeyStore::getToken()
     return token;
 }
 
-void SystemKeyStore::setToken(const QString &token)
+void SystemKeyStore::createTemporaryToken(QString& ctrlID)
+{
+    QByteArray utf8 = ctrlID.toUtf8();
+    tempToken.setControllerID(utf8.constData());
+    tempToken.setCheckTime( QDate::currentDate() );
+    tempToken.setFingerprint(getFingerprint());
+}
+
+
+void SystemKeyStore::setToken(const QByteArray &token)
 {
     writeToken(token);
 }
 
-QString SystemKeyStore::readToken()
+QByteArray SystemKeyStore::readToken()
 {
-    return settings->value("hum_token").toString();
+    QByteArray token = settings->value("hum_token").toByteArray();
+    tempToken = HumToken::fromByteArray(token);
+    return token;
 }
 
-void SystemKeyStore::writeToken(const QString &token)
+void SystemKeyStore::writeToken(const QByteArray &token)
 {
+    tempToken = HumToken::fromByteArray(token);
     settings->setValue("hum_token", token);
     settings->sync();
 }
 
-QString SystemKeyStore::getFingerprint()
+QByteArray SystemKeyStore::getFingerprint()
 {
     QByteArray hwInfo;
 
@@ -71,8 +86,5 @@ QString SystemKeyStore::getFingerprint()
     hwInfo.append(QHostInfo::localHostName().toUtf8());
 
     // Hash hardware info to generate UUID-like string
-    QByteArray hash = QCryptographicHash::hash(hwInfo, QCryptographicHash::Sha256);
-    QUuid uuid = QUuid::fromRfc4122(hash.left(16));
-
-    return uuid.toString(QUuid::WithoutBraces);  // Ex: "5a1e4413-ef3c-493e-9c9f-d4b6a1f91aa1"
+    return QCryptographicHash::hash(hwInfo, QCryptographicHash::Sha256);
 }

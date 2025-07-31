@@ -35,14 +35,17 @@ int main(int argc, char *argv[]) {
 
     // ===  Load humToken ===
     SystemKeyStore systemStore;
-    QString fp = systemStore.getFingerprint();
     bool newDevice = true;
-    QString humToken = systemStore.getToken();
+    QByteArray humToken = systemStore.getToken();
     qDebug() << "humToken =" << humToken;
     if (humToken.isEmpty())
     {
         qWarning() << "Product registration in progress, internet connection required";
-
+        humToken = systemStore.getTempToken();
+    }
+    else
+    {
+        newDevice = false;
     }
 
 

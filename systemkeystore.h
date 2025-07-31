@@ -3,6 +3,9 @@
 #include <QObject>
 #include <QSettings>
 #include <QString>
+#include <QDate>
+#include "humtoken.h"
+
 
 class SystemKeyStore : public QObject
 {
@@ -11,14 +14,21 @@ class SystemKeyStore : public QObject
 public:
     explicit SystemKeyStore(QObject *parent = nullptr);
 
-    QString getToken();
-    void setToken(const QString &token);
-
-    QString getFingerprint();  // UUID derived from hardware identity
+    QByteArray getToken();
+    void createTemporaryToken(QString& ctrlID);
+    void setToken(const QByteArray &token);
+    QByteArray getTempToken() const
+    {
+        return tempToken.toByteArray();
+    }
 
 private:
     QSettings *settings;
+    HumToken tempToken;
 
-    QString readToken();
-    void writeToken(const QString &token);
+    QByteArray readToken();
+    void writeToken(const QByteArray &token);
+    QByteArray getFingerprint();  // UUID derived from hardware identity
+
+
 };
