@@ -1,5 +1,6 @@
 #include "LicenseServerInterface.h"
 #include <QHostAddress>
+#include <QUrl>
 #include <QDataStream>
 #include <QDebug>
 

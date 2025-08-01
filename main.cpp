@@ -14,6 +14,7 @@
 #include "settings.h"
 #include "SystemKeyStore.h"
 #include "ControllerInterface.h"
+#include "LicenseServerInterface.h"
 
 int main(int argc, char *argv[]) {
     QCoreApplication app(argc, argv);
@@ -72,11 +73,24 @@ int main(int argc, char *argv[]) {
             //Current token offline validity check
             if(!systemStore.isTokenStillValid(serialID))
             {
+                LicenseServerInterface license(settings);
+                QByteArray tempToken = systemStore.getTempToken();
+
                 //invalid token
                 if(!systemStore.isTokenExpired(serialID))
                 {
                     qWarning() << "Token validity expired, internet connection required for renewal";
                     //continuare con connessione al server di licenze inviando il token attuale
+
+                    QByteArray validated = license.requestValidatedToken(tempToken, tempToken);
+                    if (validated.isEmpty())
+                    {
+                        qCritical() << "Validation error.";
+                        return 1;
+                    }
+
+                    qInfo() << "Token renewed";
+                    systemStore.setToken(validated.toHex());
                 }
                 else
                 {
@@ -93,18 +107,20 @@ int main(int argc, char *argv[]) {
                     //
                     //Tutte queste operazioni richiedono interventi manuali, non sono automatiche
 
-
+                    //Registering new controller device
+                    QByteArray invalidToken = tempToken;
+                    systemStore.createTempToken(serialID);
+                    tempToken = systemStore.getTempToken();
+                    QByteArray validated = license.requestValidatedToken(invalidToken, tempToken);
+                    if (validated.isEmpty())
+                    {
+                        qCritical() << "Validation error.";
+                        return 1;
+                    }
                 }
             }
-            else
-            {
-                //token valido
 
-
-
-
-            }
-
+            //token valido
         }
 
     }
