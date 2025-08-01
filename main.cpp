@@ -6,7 +6,6 @@
 #include <QWebChannel>
 #include <QHttpServer>
 #include <QTcpServer>
-#include <QSerialPort>
 #include <QFile>
 #include <QDir>
 #include <QDebug>
@@ -14,9 +13,10 @@
 #include "websockettransport.h"
 #include "settings.h"
 #include "SystemKeyStore.h"
+#include "ControllerInterface.h"
 
 int main(int argc, char *argv[]) {
-    QCoreApplication a(argc, argv);
+    QCoreApplication app(argc, argv);
 
     // Qt translations (unchanged)
     QTranslator translator;
@@ -24,7 +24,7 @@ int main(int argc, char *argv[]) {
     for (const QString &locale : uiLanguages) {
         const QString baseName = "HumServer3_" + QLocale(locale).name();
         if (translator.load(":/i18n/" + baseName)) {
-            a.installTranslator(&translator);
+            app.installTranslator(&translator);
             break;
         }
     }
@@ -48,59 +48,71 @@ int main(int argc, char *argv[]) {
         newDevice = false;
     }
 
-
-    // === Open serial port using settings ===
-    QSerialPort *serial = new QSerialPort(&a);
-
-    serial->setPortName(settings.serialPort);
-
-    QStringList parts = settings.serialParams.split(',', Qt::SkipEmptyParts);
-    if (parts.size() == 4)
+    // === Create controller interface ===
+    ControllerInterface* ctrlIf = new ControllerInterface(settings, &app);
+    if (ctrlIf)
     {
-        bool ok = false;
-
-        int baudRate = parts[0].toInt(&ok);
-        if (ok)
+        QString serialID = ctrlIf->getSerialNumber();
+        if (serialID.isNull())
         {
-            serial->setBaudRate(baudRate);
+            qCritical() << "Unable to get a valid serial number from controller";
+            return 1;
+        }
+
+        if(newDevice)
+        {
+            //Registering new controller device
+            systemStore.createTempToken(serialID);
+
+            //continuare con connessione al server di licenze inviando il token temporaneo
+            //(ovvero con check time di oggi, quindi si comporta come nel caso di token scaduto)
         }
         else
         {
-            qWarning() << "Invalid baud rate:" << parts[0];
-        }
-
-        int dataBits = parts[1].toInt(&ok);
-        if (ok)
-        {
-            switch (dataBits)
+            //Current token offline validity check
+            if(!systemStore.isTokenStillValid(serialID))
             {
-            case 5: serial->setDataBits(QSerialPort::Data5); break;
-            case 6: serial->setDataBits(QSerialPort::Data6); break;
-            case 7: serial->setDataBits(QSerialPort::Data7); break;
-            case 8: serial->setDataBits(QSerialPort::Data8); break;
-            default: qWarning() << "Invalid data bits:" << dataBits;
+                //invalid token
+                if(!systemStore.isTokenExpired(serialID))
+                {
+                    qWarning() << "Token validity expired, internet connection required for renewal";
+                    //continuare con connessione al server di licenze inviando il token attuale
+                }
+                else
+                {
+                    qWarning() << "This token is invalid";
+                    //I casi sono due:
+                    //1-questo PC è stato associato ad un altro controller.
+                    //Solo i PC di servizio possono collegarsi a tutti i controller
+                    //per cui saranno registrati nel server come tali.
+                    //I PC di produzione si associano ad un singolo controller per
+                    //cui il controller precedentemente associato deve essere dissociato.
+                    //2-è stato alterato l'hardware del PC associato, la pedana è la stessa.
+                    //inviare il token invalido e un nuovo temp token
+                    //al server di licenze per disabilitare la precedente configurazione hw
+                    //
+                    //Tutte queste operazioni richiedono interventi manuali, non sono automatiche
+
+
+                }
             }
+            else
+            {
+                //token valido
+
+
+
+
+            }
+
         }
 
-        QString parity = parts[2].trimmed().toLower();
-        if (parity == "n") serial->setParity(QSerialPort::NoParity);
-        else if (parity == "e") serial->setParity(QSerialPort::EvenParity);
-        else if (parity == "o") serial->setParity(QSerialPort::OddParity);
-        else qWarning() << "Invalid parity:" << parity;
-
-        int stopBits = parts[3].toInt(&ok);
-        if (ok)
-        {
-            if (stopBits == 1) serial->setStopBits(QSerialPort::OneStop);
-            else if (stopBits == 2) serial->setStopBits(QSerialPort::TwoStop);
-            else qWarning() << "Invalid stop bits:" << stopBits;
-        }
     }
     else
     {
-        qWarning() << "Invalid serialParams format, expected: baud,dataBits,parity,stopBits";
+        qCritical() << "Unable to open serial port";
+        return 1;
     }
-
 
 
     // ===  Start QWebSocketServer for QWebChannel ===
@@ -152,7 +164,7 @@ int main(int argc, char *argv[]) {
     });
 
     // Listen on port 8080 for HTTP requests
-    QTcpServer* tcpServer = new QTcpServer(&a);
+    QTcpServer* tcpServer = new QTcpServer(&app);
     if (!tcpServer->listen(QHostAddress::Any, 8080)) {
         qCritical() << "Failed to start QTcpServer on port 8080";
         return 1;
@@ -165,5 +177,5 @@ int main(int argc, char *argv[]) {
 
     qDebug() << "HTTP server listening at http://<host>:8080/";
 
-    return a.exec();
+    return app.exec();
 }

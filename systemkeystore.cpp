@@ -40,13 +40,57 @@ QByteArray SystemKeyStore::getToken()
     return token;
 }
 
-void SystemKeyStore::createTemporaryToken(QString& ctrlID)
+void SystemKeyStore::createTempToken(QString& ctrlID)
 {
     QByteArray utf8 = ctrlID.toUtf8();
     tempToken.setControllerID(utf8.constData());
     tempToken.setCheckTime( QDate::currentDate() );
     tempToken.setFingerprint(getFingerprint());
 }
+
+bool SystemKeyStore::isTokenStillValid(QString& ctrlID)
+{
+    QDate today = QDate::currentDate();
+    QByteArray fingerprint = getFingerprint();
+    bool valid = false;
+
+    if(tempToken.getFingerprint() == fingerprint)
+    {
+        if(tempToken.getControllerID() == ctrlID)
+        {
+            if(tempToken.getCheckTime() > today)
+            {
+                valid = true;
+            }
+        }
+    }
+
+    return valid;
+}
+
+bool SystemKeyStore::isTokenExpired(QString& ctrlID)
+{
+    QDate today = QDate::currentDate();
+    QByteArray fingerprint = getFingerprint();
+    bool expired = false;
+
+    if(tempToken.getFingerprint() == fingerprint)
+    {
+        if(tempToken.getControllerID() == ctrlID)
+        {
+            if(tempToken.getCheckTime() <= today)
+            {
+                //time expired but controller and PC are ok
+                expired = true;
+            }
+        }
+    }
+
+    //returns false when token is not valid at all
+    return expired;
+}
+
+
 
 
 void SystemKeyStore::setToken(const QByteArray &token)

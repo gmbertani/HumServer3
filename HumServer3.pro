@@ -10,15 +10,20 @@ TRANSLATIONS += \
 TEMPLATE = app
 
 SOURCES += \
+    controllerinterface.cpp \
     databridge.cpp \
+    licenseserverinterface.cpp \
     main.cpp \
     settings.cpp \
     systemkeystore.cpp
 
 
 HEADERS += \
+    controllerinterface.h \
     databridge.h \
+    humatric_protocol.h \
     humtoken.h \
+    licenseserverinterface.h \
     settings.h \
     systemkeystore.h \
     websockettransport.h

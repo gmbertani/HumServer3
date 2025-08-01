@@ -15,12 +15,15 @@ public:
     explicit SystemKeyStore(QObject *parent = nullptr);
 
     QByteArray getToken();
-    void createTemporaryToken(QString& ctrlID);
+    void createTempToken(QString& ctrlID);
     void setToken(const QByteArray &token);
     QByteArray getTempToken() const
     {
         return tempToken.toByteArray();
     }
+
+    bool isTokenStillValid(QString& ctrlID);
+    bool isTokenExpired(QString& ctrlID);
 
 private:
     QSettings *settings;
