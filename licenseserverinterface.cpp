@@ -9,7 +9,7 @@ LicenseServerInterface::LicenseServerInterface(Settings &settingsRef, QObject *p
 {
 }
 
-QByteArray LicenseServerInterface::requestValidatedToken(const QByteArray &token1, const QByteArray &token2)
+QByteArray LicenseServerInterface::requestValidatedToken(const QByteArray &activationKey, const QByteArray &incompleteToken)
 {
     QSslSocket socket;
 
@@ -22,8 +22,9 @@ QByteArray LicenseServerInterface::requestValidatedToken(const QByteArray &token
     }
 
     QString host = url.host();
-    int port = url.port(443);  // default to 443 if not specified
+    int port = url.port(443);  // default TLS port
 
+    // Connessione cifrata TLS
     socket.connectToHostEncrypted(host, port);
 
     if (!socket.waitForEncrypted(3000))
@@ -32,19 +33,18 @@ QByteArray LicenseServerInterface::requestValidatedToken(const QByteArray &token
         return {};
     }
 
-    // Costruzione payload (token1 + token2)
+    // Header di comando
     QByteArray payload;
-    QDataStream stream(&payload, QIODevice::WriteOnly);
-    stream.setByteOrder(QDataStream::BigEndian);
-    stream << quint32(token1.size()) << token1;
-    stream << quint32(token2.size()) << token2;
+    payload.append(static_cast<char>(0x01)); // CMD_VALIDATE_TOKEN
+    payload.append(activationKey);           // 32 byte
+    payload.append(incompleteToken);         // token C++ serializzato (raw)
 
     // Invia il payload
     socket.write(payload);
 
     if (!socket.waitForBytesWritten(2000))
     {
-        qWarning() << "Failed to send tokens:" << socket.errorString();
+        qWarning() << "Failed to send token validation request:" << socket.errorString();
         return {};
     }
 
@@ -55,7 +55,8 @@ QByteArray LicenseServerInterface::requestValidatedToken(const QByteArray &token
     }
 
     QByteArray response = socket.readAll();
-
     socket.disconnectFromHost();
+
     return response;
 }
+

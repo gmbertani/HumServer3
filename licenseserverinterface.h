@@ -11,7 +11,7 @@ class LicenseServerInterface : public QObject
 
 public:
     explicit LicenseServerInterface(Settings &settingsRef, QObject *parent = nullptr);
-    QByteArray requestValidatedToken(const QByteArray &token1, const QByteArray &token2);
+    QByteArray requestValidatedToken(const QByteArray &activationKey, const QByteArray &incompleteToken);
 
 private:
     Settings &settings;
