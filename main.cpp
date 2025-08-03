@@ -37,6 +37,7 @@ int main(int argc, char *argv[]) {
     // ===  Load humToken ===
     SystemKeyStore systemStore;
     bool newDevice = true;
+    bool unregistered = true;
     QByteArray humToken = systemStore.getToken();
     qDebug() << "humToken =" << humToken;
     if (humToken.isEmpty())
@@ -47,6 +48,7 @@ int main(int argc, char *argv[]) {
     else
     {
         newDevice = false;
+        unregistered = false;
     }
 
     // === Create controller interface ===
@@ -56,7 +58,7 @@ int main(int argc, char *argv[]) {
         QString serialID = ctrlIf->getSerialNumber();
         if (serialID.isNull())
         {
-            qCritical() << "Unable to get a valid serial number from controller";
+            qCritical() << "Unable to get a valid serial number from controller, aborting.";
             return 1;
         }
 
@@ -65,7 +67,18 @@ int main(int argc, char *argv[]) {
             //Registering new controller device
             systemStore.createTempToken(serialID);
             LicenseServerInterface license(settings);
-            license.requestValidatedToken(const QByteArray &activationKey, const QByteArray &incompleteToken);
+            humToken = license.requestValidatedToken(settings.activationKey, systemStore.getTempToken());
+            if (humToken.isEmpty())
+            {
+                qCritical() << "License validation error. System in test mode.";
+                unregistered = true;
+                return 1;
+            }
+
+            systemStore.setToken(humToken.toHex());
+            qInfo() << "License valid. System fully operational";
+            newDevice = false;
+            unregistered = false;
         }
         else
         {
@@ -73,62 +86,60 @@ int main(int argc, char *argv[]) {
             if(!systemStore.isTokenStillValid(serialID))
             {
                 LicenseServerInterface license(settings);
-                QByteArray tempToken = systemStore.getTempToken();
 
                 //invalid token
                 if(!systemStore.isTokenExpired(serialID))
                 {
                     qWarning() << "Token validity expired, internet connection required for renewal";
-                    //continuare con connessione al server di licenze inviando il token attuale
 
-                    QByteArray validated = license.requestValidatedToken(tempToken, tempToken);
-                    if (validated.isEmpty())
+                    humToken = license.requestValidatedToken(settings.activationKey, systemStore.getTempToken());
+                    if (humToken.isEmpty())
                     {
-                        qCritical() << "Validation error.";
-                        return 1;
+                        qCritical() << "License validation error. System in test mode.";
+                        unregistered = true;
                     }
 
-                    qInfo() << "Token renewed";
+                    qInfo() << "License renewed";
                     systemStore.setToken(validated.toHex());
+                    unregistered = false;
                 }
                 else
                 {
-                    qWarning() << "This token is invalid";
-                    //I casi sono due:
-                    //1-questo PC è stato associato ad un altro controller.
-                    //Solo i PC di servizio possono collegarsi a tutti i controller
-                    //per cui saranno registrati nel server come tali.
-                    //I PC di produzione si associano ad un singolo controller per
-                    //cui il controller precedentemente associato deve essere dissociato.
-                    //2-è stato alterato l'hardware del PC associato, la pedana è la stessa.
-                    //inviare il token invalido e un nuovo temp token
-                    //al server di licenze per disabilitare la precedente configurazione hw
-                    //
-                    //Tutte queste operazioni richiedono interventi manuali, non sono automatiche
+                    qWarning() << "This license is invalid. System in test mode.";
 
-                    //Registering new controller device
-                    QByteArray invalidToken = tempToken;
-                    systemStore.createTempToken(serialID);
-                    tempToken = systemStore.getTempToken();
-                    QByteArray validated = license.requestValidatedToken(invalidToken, tempToken);
-                    if (validated.isEmpty())
-                    {
-                        qCritical() << "Validation error.";
-                        return 1;
-                    }
+                    //I casi sono due:
+                    //1-questo PC è stato associato ad un altro controller, cosa che non deve accadere.
+                    //2-è stato alterato l'hardware del PC associato, la pedana è la stessa. Contattare
+                    // via mail per richiedere una nuova activation key
+                    unregistered = true;
                 }
             }
 
             //token valido
         }
-
     }
     else
     {
-        qCritical() << "Unable to open serial port";
+        qCritical() << "Unable to open serial port, aborting.";
         return 1;
     }
 
+
+    // === Database connection
+    qDebug() << "Available SQL drivers:" << QSqlDatabase::drivers();
+
+    if (!QSqlDatabase::isDriverAvailable("QMYSQL"))
+    {
+        qCritical() << "QMYSQL driver is not available, System in test mode.!";
+        unregistered = true;
+    }
+
+    if(!unregistered)
+    {
+
+
+
+    }
 
     // ===  Start QWebSocketServer for QWebChannel ===
     QWebSocketServer server(QStringLiteral("QWebChannel Server"),

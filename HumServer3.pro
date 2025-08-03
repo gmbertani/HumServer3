@@ -1,4 +1,4 @@
-QT += core network websockets webchannel httpserver serialport
+QT += core network websockets webchannel httpserver serialport sql
 
 CONFIG += c++17
 CONFIG += embed_translations
@@ -10,6 +10,7 @@ TRANSLATIONS += \
 TEMPLATE = app
 
 SOURCES += \
+    MariaDBInterface.cpp \
     controllerinterface.cpp \
     databridge.cpp \
     licenseserverinterface.cpp \
@@ -19,6 +20,7 @@ SOURCES += \
 
 
 HEADERS += \
+    MariaDBInterface.h \
     controllerinterface.h \
     databridge.h \
     humatric_protocol.h \
