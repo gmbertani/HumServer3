@@ -19,6 +19,7 @@ public:
     QString controllerIP;
     int controllerPort = 0;
     QString licenseServerUrl;
+    QString activationKey;     //questa non ha requisiti di sicurezza, diversamente dalla validated key
 
     // GUI
     QString language;

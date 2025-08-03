@@ -19,6 +19,7 @@ void Settings::load()
     controllerIP = value("ControllerIP").toString();
     controllerPort = value("ControllerPort").toInt();
     licenseServerUrl = value("LicenseServerUrl").toString();
+    activationKey = value("ActivationKey").toString();
     endGroup();
 
     // GUI
@@ -58,6 +59,7 @@ void Settings::save()
     setValue("ControllerIP", controllerIP);
     setValue("ControllerPort", controllerPort);
     setValue("LicenseServerUrl", licenseServerUrl);
+    setValue("ActivationKey", activationKey);
     endGroup();
 
     // GUI
@@ -98,7 +100,8 @@ void Settings::reset()
     serialParams = "115200,8,n,1";
     controllerIP = "0.0.0.0";            //TODO: letto con GET_STATUS
     controllerPort = 2025;               //UDP port
-    licenseServerUrl = "89.36.210.132";  //VPS Sirius
+    licenseServerUrl = "89.36.210.132";  //VPS Sirius (siriuslogic.it)
+    activationKey = "";
 
 
     // GUI

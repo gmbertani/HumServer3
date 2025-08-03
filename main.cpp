@@ -64,9 +64,8 @@ int main(int argc, char *argv[]) {
         {
             //Registering new controller device
             systemStore.createTempToken(serialID);
-
-            //continuare con connessione al server di licenze inviando il token temporaneo
-            //(ovvero con check time di oggi, quindi si comporta come nel caso di token scaduto)
+            LicenseServerInterface license(settings);
+            license.requestValidatedToken(const QByteArray &activationKey, const QByteArray &incompleteToken);
         }
         else
         {

@@ -33,6 +33,15 @@ QByteArray LicenseServerInterface::requestValidatedToken(const QByteArray &activ
         return {};
     }
 
+
+    // Ignora errori SSL se stai usando un certificato self-signed
+    QObject::connect(&socket, &QSslSocket::sslErrors, [&socket](const QList<QSslError> &errors)
+     {
+         for (const auto &e : errors)
+             qWarning() << "SSL error:" << e.errorString();
+         socket.ignoreSslErrors();
+     });
+
     // Header di comando
     QByteArray payload;
     payload.append(static_cast<char>(0x01)); // CMD_VALIDATE_TOKEN
