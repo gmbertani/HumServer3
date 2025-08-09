@@ -6,6 +6,7 @@
 #include <QWebChannel>
 #include <QHttpServer>
 #include <QTcpServer>
+#include <QSqlDatabase>
 #include <QFile>
 #include <QDir>
 #include <QDebug>
@@ -15,6 +16,8 @@
 #include "SystemKeyStore.h"
 #include "ControllerInterface.h"
 #include "LicenseServerInterface.h"
+
+LogLevels_t logLevel = HUM_LOG_ALL;
 
 int main(int argc, char *argv[]) {
     QCoreApplication app(argc, argv);
@@ -39,10 +42,10 @@ int main(int argc, char *argv[]) {
     bool newDevice = true;
     bool unregistered = true;
     QByteArray humToken = systemStore.getToken();
-    qDebug() << "humToken =" << humToken;
+    MYDEBUG << "humToken =" << humToken;
     if (humToken.isEmpty())
     {
-        qWarning() << "Product registration in progress, internet connection required";
+        MYWARNING << "Product registration in progress, internet connection required";
         humToken = systemStore.getTempToken();
     }
     else
@@ -55,10 +58,11 @@ int main(int argc, char *argv[]) {
     ControllerInterface* ctrlIf = new ControllerInterface(settings, &app);
     if (ctrlIf)
     {
+        QThread::msleep(10);
         QString serialID = ctrlIf->getSerialNumber();
         if (serialID.isNull())
         {
-            qCritical() << "Unable to get a valid serial number from controller, aborting.";
+            MYCRITICAL << "Unable to get a valid serial number from controller, aborting.";
             return 1;
         }
 
@@ -67,18 +71,19 @@ int main(int argc, char *argv[]) {
             //Registering new controller device
             systemStore.createTempToken(serialID);
             LicenseServerInterface license(settings);
-            humToken = license.requestValidatedToken(settings.activationKey, systemStore.getTempToken());
+            humToken = license.requestValidatedToken(settings.activationKey.toUtf8(), systemStore.getTempToken());
             if (humToken.isEmpty())
             {
-                qCritical() << "License validation error. System in test mode.";
+                MYCRITICAL << "License validation error. System in test mode.";
                 unregistered = true;
-                return 1;
             }
-
-            systemStore.setToken(humToken.toHex());
-            qInfo() << "License valid. System fully operational";
-            newDevice = false;
-            unregistered = false;
+            else
+            {
+                systemStore.setToken(humToken.toHex());
+                MYINFO << "License valid. System fully operational";
+                newDevice = false;
+                unregistered = false;
+            }
         }
         else
         {
@@ -90,22 +95,22 @@ int main(int argc, char *argv[]) {
                 //invalid token
                 if(!systemStore.isTokenExpired(serialID))
                 {
-                    qWarning() << "Token validity expired, internet connection required for renewal";
+                    MYWARNING << "Token validity expired, internet connection required for renewal";
 
-                    humToken = license.requestValidatedToken(settings.activationKey, systemStore.getTempToken());
+                    humToken = license.requestValidatedToken(settings.activationKey.toUtf8(), systemStore.getTempToken());
                     if (humToken.isEmpty())
                     {
-                        qCritical() << "License validation error. System in test mode.";
+                        MYCRITICAL << "License validation error. System in test mode.";
                         unregistered = true;
                     }
 
-                    qInfo() << "License renewed";
-                    systemStore.setToken(validated.toHex());
+                    MYINFO << "License renewed";
+                    systemStore.setToken(humToken.toHex());
                     unregistered = false;
                 }
                 else
                 {
-                    qWarning() << "This license is invalid. System in test mode.";
+                    MYWARNING << "This license is invalid. System in test mode.";
 
                     //I casi sono due:
                     //1-questo PC è stato associato ad un altro controller, cosa che non deve accadere.
@@ -120,17 +125,17 @@ int main(int argc, char *argv[]) {
     }
     else
     {
-        qCritical() << "Unable to open serial port, aborting.";
+        MYCRITICAL << "Unable to open serial port, aborting.";
         return 1;
     }
 
 
     // === Database connection
-    qDebug() << "Available SQL drivers:" << QSqlDatabase::drivers();
+    MYDEBUG << "Available SQL drivers:" << QSqlDatabase::drivers();
 
     if (!QSqlDatabase::isDriverAvailable("QMYSQL"))
     {
-        qCritical() << "QMYSQL driver is not available, System in test mode.!";
+        MYCRITICAL << "QMYSQL driver is not available, System in test mode.!";
         unregistered = true;
     }
 
@@ -145,10 +150,10 @@ int main(int argc, char *argv[]) {
     QWebSocketServer server(QStringLiteral("QWebChannel Server"),
                             QWebSocketServer::NonSecureMode);
     if (!server.listen(QHostAddress::Any, 12345)) {
-        qCritical() << "Failed to start WebSocketServer on port 12345";
+        MYCRITICAL << "Failed to start WebSocketServer on port 12345";
         return 1;
     }
-    qDebug() << "WebSocket server listening on ws://<host>:12345";
+    MYDEBUG << "WebSocket server listening on ws://<host>:12345";
 
     QWebChannel *channel = new QWebChannel();
     DataBridge *bridge = new DataBridge();
@@ -156,7 +161,7 @@ int main(int argc, char *argv[]) {
 
     QObject::connect(&server, &QWebSocketServer::newConnection, [&]() {
         QWebSocket *socket = server.nextPendingConnection();
-        qDebug() << "New WebSocket connection";
+        MYDEBUG << "New WebSocket connection";
 
         auto *transport = new WebSocketTransport(socket);
         QObject::connect(socket, &QWebSocket::disconnected, transport, &QObject::deleteLater);
@@ -192,16 +197,16 @@ int main(int argc, char *argv[]) {
     // Listen on port 8080 for HTTP requests
     QTcpServer* tcpServer = new QTcpServer(&app);
     if (!tcpServer->listen(QHostAddress::Any, 8080)) {
-        qCritical() << "Failed to start QTcpServer on port 8080";
+        MYCRITICAL << "Failed to start QTcpServer on port 8080";
         return 1;
     }
 
     if (!httpServer.bind(tcpServer)) {
-        qCritical() << "Failed to bind QHttpServer to QTcpServer";
+        MYCRITICAL << "Failed to bind QHttpServer to QTcpServer";
         return 1;
     }
 
-    qDebug() << "HTTP server listening at http://<host>:8080/";
+    MYDEBUG << "HTTP server listening at http://<host>:8080/";
 
     return app.exec();
 }

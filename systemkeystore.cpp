@@ -1,5 +1,5 @@
 #include "SystemKeyStore.h"
-
+#include "settings.h"
 #include <QCoreApplication>
 #include <QCryptographicHash>
 #include <QNetworkInterface>
@@ -30,11 +30,11 @@ QByteArray SystemKeyStore::getToken()
 
     if (token.isEmpty())
     {
-        qDebug() << "[SystemKeyStore] hum_token is empty.";
+        MYDEBUG << "[SystemKeyStore] hum_token is empty.";
     }
     else
     {
-        qDebug() << "[SystemKeyStore] Loaded existing hum_token:" << token;
+        MYDEBUG << "[SystemKeyStore] Loaded existing hum_token:" << token;
     }
 
     return token;

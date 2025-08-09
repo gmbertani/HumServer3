@@ -1,4 +1,5 @@
 #include "MariaDBInterface.h"
+#include "settings.h"
 #include <QDebug>
 
 MariaDBInterface::MariaDBInterface(QObject *parent)
@@ -18,7 +19,7 @@ bool MariaDBInterface::connect(const QString &host, int port, const QString &use
 
     if (!db.open())
     {
-        qCritical() << "Failed to connect to MariaDB:" << db.lastError().text();
+        MYCRITICAL << "Failed to connect to MariaDB:" << db.lastError().text();
         return false;
     }
 
@@ -35,7 +36,7 @@ bool MariaDBInterface::ensureDatabaseAndTables()
 {
     if (databaseExists())
     {
-        qDebug() << "Database 'humDB' already exists.";
+        MYDEBUG << "Database 'humDB' already exists.";
         return true;
     }
 
@@ -76,7 +77,7 @@ bool MariaDBInterface::createDatabaseAndTables()
     {
         if (!query.exec(stmt))
         {
-            qCritical() << "SQL error:" << query.lastError().text();
+            MYCRITICAL << "SQL error:" << query.lastError().text();
             return false;
         }
     }
@@ -86,5 +87,5 @@ bool MariaDBInterface::createDatabaseAndTables()
 
 void MariaDBInterface::exampleQuery()
 {
-    qDebug() << "Placeholder for query implementation.";
+    MYDEBUG << "Placeholder for query implementation.";
 }

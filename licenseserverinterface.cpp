@@ -17,7 +17,7 @@ QByteArray LicenseServerInterface::requestValidatedToken(const QByteArray &activ
 
     if (!url.isValid())
     {
-        qWarning() << "Invalid license server URL:" << settings.licenseServerUrl;
+        MYWARNING << "Invalid license server URL:" << settings.licenseServerUrl;
         return {};
     }
 
@@ -29,7 +29,7 @@ QByteArray LicenseServerInterface::requestValidatedToken(const QByteArray &activ
 
     if (!socket.waitForEncrypted(3000))
     {
-        qWarning() << "TLS connection failed:" << socket.errorString();
+        MYWARNING << "TLS connection failed:" << socket.errorString();
         return {};
     }
 
@@ -38,7 +38,7 @@ QByteArray LicenseServerInterface::requestValidatedToken(const QByteArray &activ
     QObject::connect(&socket, &QSslSocket::sslErrors, [&socket](const QList<QSslError> &errors)
      {
          for (const auto &e : errors)
-             qWarning() << "SSL error:" << e.errorString();
+             MYWARNING << "SSL error:" << e.errorString();
          socket.ignoreSslErrors();
      });
 
@@ -53,13 +53,13 @@ QByteArray LicenseServerInterface::requestValidatedToken(const QByteArray &activ
 
     if (!socket.waitForBytesWritten(2000))
     {
-        qWarning() << "Failed to send token validation request:" << socket.errorString();
+        MYWARNING << "Failed to send token validation request:" << socket.errorString();
         return {};
     }
 
     if (!socket.waitForReadyRead(3000))
     {
-        qWarning() << "No response from license server.";
+        MYWARNING << "No response from license server.";
         return {};
     }
 

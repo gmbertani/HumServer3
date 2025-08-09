@@ -1,4 +1,5 @@
 #include "databridge.h"
+#include "settings.h"
 #include <QDebug>
 #include <QRandomGenerator>
 
@@ -18,6 +19,6 @@ void DataBridge::triggerData() {
 }
 
 void DataBridge::sendLog(const QString &msg) {
-    qDebug() << "[Browser log]: " << msg;
+    MYDEBUG << "[Browser log]: " << msg;
     emit logSent(QString("Qt ha ricevuto: %1").arg(msg));
 }
