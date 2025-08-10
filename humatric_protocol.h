@@ -203,6 +203,36 @@ PACKED_STRUCT_BEGIN
 } T_NotifyMessage;
 PACKED_STRUCT_END;
 
+// Enumerativo per identificare i tipi di response
+enum EResponseType
+{
+    RSP_FRAME,
+    RSP_ACK,
+    RSP_NACK,
+    RSP_SAMPLE_RATE,
+    RSP_CHANNEL_MASK,
+    RSP_STATUS,
+    RSP_FW_VERSION,
+    RSP_SERIAL_NUMBER,
+    RSP_NOTIFY,
+    RSP_TYPE_COUNT
+};
+
+// Array con lunghezza in byte di ciascun response
+static const int responseLengths[RSP_TYPE_COUNT] =
+    {
+        sizeof(T_Frame),                  // RSP_FRAME
+        sizeof(T_AckResponse),             // RSP_ACK
+        sizeof(T_NackResponse),            // RSP_NACK
+        sizeof(T_SampleRateResponse),      // RSP_SAMPLE_RATE
+        sizeof(T_ChannelMaskResponse),     // RSP_CHANNEL_MASK
+        sizeof(T_StatusResponse),          // RSP_STATUS
+        sizeof(T_FirmwareVersionResponse), // RSP_FW_VERSION
+        sizeof(T_SerialNumberResponse),    // RSP_SERIAL_NUMBER
+        sizeof(T_NotifyMessage)            // RSP_NOTIFY
+};
+
+
 uint16_t crc16(const uint8_t *data, size_t length);
 
 #endif // HUMATRIC_PROTOCOL_H

@@ -1,4 +1,5 @@
 #include "ControllerInterface.h"
+#include <QElapsedTimer>
 #include <QDebug>
 
 ControllerInterface::ControllerInterface(Settings &settingsRef, QObject *parent)
@@ -61,26 +62,37 @@ void ControllerInterface::parseSerialParams(const QString &paramString)
     }
 }
 
-QByteArray ControllerInterface::readBytes(int minBytes, int maxBytes)
+QByteArray ControllerInterface::readBytes(int minBytes, int maxBytes, int timeoutMs)
 {
-    QByteArray data;
+    QByteArray result;
+    QElapsedTimer timer;
+    timer.start();
 
-    while (serial->isOpen() && data.size() < minBytes)
+    while (result.size() < minBytes)
     {
-        if (!serial->waitForReadyRead(100))
+        // Attendi dati dalla seriale
+        if (!serial->waitForReadyRead(timeoutMs))
         {
-            continue; // aspetta ancora dati
+            // Timeout scaduto, esci
+            MYWARNING << __func__ << "() - Timeout expired (was " << timeoutMs << " ms";
+            break;
         }
 
-        QByteArray chunk = serial->read(maxBytes - data.size());
+        QByteArray chunk = serial->read(maxBytes - result.size());
         if (!chunk.isEmpty())
         {
-            data.append(chunk);
+            result.append(chunk);
+        }
+
+        if (timer.elapsed() >= timeoutMs)
+        {
+            break; // Timeout totale
         }
     }
 
-    return data;
+    return result;
 }
+
 
 bool ControllerInterface::writeBytes(const QByteArray &data)
 {
@@ -106,7 +118,14 @@ QString ControllerInterface::getSerialNumber()
     if (writeBytes(command))
     {
         MYDEBUG << __func__ << "() command sent, waiting for answer";
-        QByteArray response = readBytes(6, 64);
+        int wanted, arrived;
+        wanted = responseLengths[RSP_SERIAL_NUMBER];
+        QByteArray response = readBytes(6, wanted, 10000);
+        arrived = response.length();
+        if (arrived < wanted)
+        {
+            MYCRITICAL << __func__ << "() - received " << arrived << " bytes instead of " << wanted;
+        }
         QVariant serialID = handleResponse(response);
         MYDEBUG << __func__ << "() got SID:" << serialID.toString();
         return serialID.toString();

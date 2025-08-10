@@ -17,7 +17,7 @@ public:
     QString getSerialNumber();
 
 private:
-    QByteArray readBytes(int minBytes, int maxBytes);
+    QByteArray readBytes(int minBytes, int maxBytes, int timeoutMs);
     bool writeBytes(const QByteArray &data);
     QVariant handleResponse(const QByteArray &data);
     uint16_t computeCRC(const QByteArray &data) const;
