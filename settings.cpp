@@ -16,12 +16,10 @@ void Settings::load()
     {
         // Comm Params
         beginGroup("CommParams");
-        serialPort = value("SerialPort").toString();
-        serialParams = value("SerialParams").toString();
-        controllerIP = value("ControllerIP").toString();
-        controllerPort = value("ControllerPort").toInt();
-        licenseServerUrl = value("LicenseServerUrl").toString();
+
+        licenseServerSite = value("LicenseServerSite").toString();
         activationKey = value("ActivationKey").toString();
+        licenseServerPort = value("LicenseServerPort").toInt();
         endGroup();
 
         // GUI
@@ -31,12 +29,17 @@ void Settings::load()
         dbUrl = value("MariaDBUrl").toString();
         dbUser = value("MariaDBUser").toString();
         dbPassword = value("MariaDBPassword").toString();
+        indexPath = value("IndexPath").toString();
         endGroup();
 
         // Controller
         beginGroup("Controller");
+        serialPort = value("SerialPort").toString();
+        serialParams = value("SerialParams").toString();
+        controllerIP = value("ControllerIP").toString();
         wifiSSID = value("SSID").toString();
         wifiPassword = value("Password").toString();
+        controllerPort = value("ControllerPort").toInt();
         sampleRate = value("SampleRate").toInt();
         channelMask = value("ChannelMask").toUInt();
         endGroup();
@@ -57,13 +60,10 @@ void Settings::load()
 void Settings::save()
 {
     // Comm Params
-    beginGroup("CommParams");
-    setValue("SerialPort", serialPort);
-    setValue("SerialParams", serialParams);
-    setValue("ControllerIP", controllerIP);
-    setValue("ControllerPort", controllerPort);
-    setValue("LicenseServerUrl", licenseServerUrl);
+    beginGroup("License");
+    setValue("LicenseServerSite", licenseServerSite);
     setValue("ActivationKey", activationKey);
+    setValue("LicenseServerPort", licenseServerPort);
     endGroup();
 
     // GUI
@@ -73,12 +73,17 @@ void Settings::save()
     setValue("MariaDBUrl", dbUrl);
     setValue("MariaDBUser", dbUser);
     setValue("MariaDBPassword", dbPassword);
+    setValue("IndexPath", indexPath);
     endGroup();
 
     // Controller
     beginGroup("Controller");
+    setValue("SerialPort", serialPort);
+    setValue("SerialParams", serialParams);
+    setValue("ControllerIP", controllerIP);
     setValue("SSID", wifiSSID);
     setValue("Password", wifiPassword);
+    setValue("ControllerPort", controllerPort);
     setValue("SampleRate", sampleRate);
     setValue("ChannelMask", channelMask);
     endGroup();
@@ -99,14 +104,11 @@ void Settings::reset()
 {
     //reset to factory settings
 
-    // Comm Params
-    serialPort = "COM1";
-    serialParams = "115200,8,n,1";
-    controllerIP = "0.0.0.0";            //TODO: letto con GET_STATUS
-    controllerPort = 2025;               //UDP port
-    licenseServerUrl = "89.36.210.132";  //VPS Sirius (siriuslogic.it)
-    activationKey = "";
+    // License
 
+    licenseServerSite = "lic.siriuslogic.it"; //89.36.210.132 VPS Sirius (siriuslogic.it)
+    activationKey = "";
+    licenseServerPort = 5678;
 
     // GUI
     language = "English";
@@ -114,8 +116,13 @@ void Settings::reset()
     dbUrl = "localhost";
     dbUser = "humserver";
     dbPassword = "p@Ran2aXtutti";
+    indexPath = QDir::toNativeSeparators("c:/Users/zot/Documents/Hum/Software/HumGUI/index.html");
 
     // Controller
+    serialPort = "COM1";
+    serialParams = "115200,8,n,1";
+    controllerIP = "0.0.0.0";            //TODO: letto con GET_STATUS
+    controllerPort = 2025;               //UDP port
     wifiSSID = "ILMN";
     wifiPassword = "brtgpp65t08f205b";
     sampleRate = 100;

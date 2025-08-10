@@ -27,7 +27,8 @@ extern LogLevels_t logLevel;    //from main.cpp
 #define MYFATAL(str,arg)    if(logLevel >= HUM_LOG_FATAL) qFatal(str,arg)
 
 
-class Settings : public QSettings {
+class Settings : public QSettings
+{
 public:
     Settings();
 
@@ -35,13 +36,12 @@ public:
     void save();
     void reset();
 
-    // Sezioni: CommParams
-    QString serialPort;
-    QString serialParams;
-    QString controllerIP;
-    int controllerPort = 0;
-    QString licenseServerUrl;
+    // Sezioni:
+
+    // License
+    QString licenseServerSite;
     QString activationKey;     //questa non ha requisiti di sicurezza, diversamente dalla validated key
+    int licenseServerPort;
 
     // GUI
     QString language;
@@ -49,10 +49,15 @@ public:
     QString dbUrl;
     QString dbUser;
     QString dbPassword;
+    QString indexPath;
 
     // Controller
+    QString serialPort;
+    QString serialParams;
+    QString controllerIP;
     QString wifiSSID;
     QString wifiPassword;
+    int controllerPort = 0;
     int sampleRate = 0;
     quint32 channelMask = 0;
 
