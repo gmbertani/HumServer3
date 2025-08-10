@@ -1,6 +1,7 @@
 #include <QLocale>
 #include <QTranslator>
 #include <QCoreApplication>
+#include <QDesktopServices>
 #include <QWebSocketServer>
 #include <QWebSocket>
 #include <QWebChannel>
@@ -10,6 +11,7 @@
 #include <QFile>
 #include <QDir>
 #include <QDebug>
+#include <windows.h>
 #include "databridge.h"
 #include "websockettransport.h"
 #include "settings.h"
@@ -133,7 +135,7 @@ int main(int argc, char *argv[]) {
     // === Database connection
     MYDEBUG << "Available SQL drivers:" << QSqlDatabase::drivers();
 
-    if (!QSqlDatabase::isDriverAvailable("QMYSQL"))
+    if (!QSqlDatabase::isDriverAvailable("QMARIADB" /* "QMYSQL" */))
     {
         MYCRITICAL << "QMYSQL driver is not available, System in test mode.!";
         unregistered = true;
@@ -208,5 +210,13 @@ int main(int argc, char *argv[]) {
 
     MYDEBUG << "HTTP server listening at http://<host>:8080/";
 
+#ifdef Q_OS_WIN
+    ShellExecuteA(nullptr, "open", settings.indexPath.toStdString().c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+#elif defined(Q_OS_LINUX)
+    QString cmd = QString("xdg-open \"%1\"").arg(settings.indexPath);
+    system(cmd.toStdString().c_str());
+#else
+    MYWARNING << "Cannot open GUI pages";
+#endif
     return app.exec();
 }

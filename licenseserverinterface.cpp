@@ -13,23 +13,15 @@ QByteArray LicenseServerInterface::requestValidatedToken(const QByteArray &activ
 {
     QSslSocket socket;
 
-    QUrl url(settings.licenseServerUrl);
-
-    if (!url.isValid())
-    {
-        MYWARNING << "Invalid license server URL:" << settings.licenseServerUrl;
-        return {};
-    }
-
-    QString host = url.host();
-    int port = url.port(443);  // default TLS port
+    QString host = settings.licenseServerSite;
+    int port = settings.licenseServerPort;
 
     // Connessione cifrata TLS
     socket.connectToHostEncrypted(host, port);
 
     if (!socket.waitForEncrypted(3000))
     {
-        MYWARNING << "TLS connection failed:" << socket.errorString();
+        MYWARNING << "TLS connection to " << host << " : " << port << " failed:" << socket.errorString();
         return {};
     }
 
@@ -44,7 +36,7 @@ QByteArray LicenseServerInterface::requestValidatedToken(const QByteArray &activ
 
     // Header di comando
     QByteArray payload;
-    payload.append(static_cast<char>(0x01)); // CMD_VALIDATE_TOKEN
+    payload.append('1');                     // CMD_VALIDATE_TOKEN
     payload.append(activationKey);           // 32 byte
     payload.append(incompleteToken);         // token C++ serializzato (raw)
 
