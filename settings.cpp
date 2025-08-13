@@ -19,7 +19,7 @@ void Settings::load()
 
         licenseServerSite = value("LicenseServerSite").toString();
         serverCertName = value("ServerCertName").toString();
-        activationKey = value("ActivationKey").toString();
+        activationKeyBytes = value("ActivationKey").toByteArray();
         licenseServerPort = value("LicenseServerPort").toInt();
         endGroup();
 
@@ -64,7 +64,7 @@ void Settings::save()
     beginGroup("License");
     setValue("LicenseServerSite", licenseServerSite);
     setValue("ServerCertName", serverCertName);
-    setValue("ActivationKey", activationKey);
+    setValue("activationKeyBytes", activationKeyBytes);
     setValue("LicenseServerPort", licenseServerPort);
     endGroup();
 
@@ -110,7 +110,8 @@ void Settings::reset()
 
     licenseServerSite = "lic.siriuslogic.it"; //89.36.210.132 VPS Sirius (siriuslogic.it)
     serverCertName = "server.crt";
-    activationKey = "";
+    activationKeyBytes.fill('0', 32);
+    //activationKey = "5dd9881f97ee028b2eadd69cee39ded2c053dddfb45e0d6840e77d7aa1ece471";
     licenseServerPort = 5678;
 
     // GUI

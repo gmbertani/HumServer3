@@ -8,10 +8,10 @@
 #include <QHttpServer>
 #include <QTcpServer>
 #include <QSqlDatabase>
+#include <QTextStream>
 #include <QFile>
 #include <QDir>
 #include <QDebug>
-#include <windows.h>
 #include "databridge.h"
 #include "websockettransport.h"
 #include "settings.h"
@@ -19,10 +19,40 @@
 #include "ControllerInterface.h"
 #include "LicenseServerInterface.h"
 
+#ifdef Q_OS_WIN
+ #include <windows.h>
+ #include <io.h>
+ #include <fcntl.h>
+#endif //Q_OS_WIN
+
+
+
+
 LogLevels_t logLevel = HUM_LOG_ALL;
 
 int main(int argc, char *argv[]) {
     QCoreApplication app(argc, argv);
+
+ #ifdef Q_OS_WIN
+    // Forza allocazione console per debug
+    AllocConsole();
+
+    // Redirect streams alla console
+    FILE* pCout;
+    FILE* pCin;
+    FILE* pCerr;
+    freopen_s(&pCout, "CONOUT$", "w", stdout);
+    freopen_s(&pCin, "CONIN$", "r", stdin);
+    freopen_s(&pCerr, "CONOUT$", "w", stderr);
+
+    // Sincronizza Qt debug con console
+    qInstallMessageHandler([](QtMsgType type, const QMessageLogContext&, const QString& msg) {
+        printf("%s\n", msg.toLocal8Bit().constData());
+        fflush(stdout);
+    });
+#endif //Q_OS_WIN
+
+
 
     // Qt translations (unchanged)
     QTranslator translator;
@@ -72,8 +102,67 @@ int main(int argc, char *argv[]) {
         {
             //Registering new controller device
             systemStore.createTempToken(serialID);
+
+            // Request activation key from CLI
+            QByteArray activationKeyBytes;
+            bool validKey = false;
+
+            while (!validKey)
+            {
+                MYINFO << "Enter activation key (64 hex characters): ";
+                //out.flush();
+
+                // Usa input C standard invece di QTextStream
+                char buffer[128];
+                if (!fgets(buffer, sizeof(buffer), stdin))
+                {
+                    MYWARNING << "Error reading input.";
+                    continue;
+                }
+
+                // Converti a QString e pulisci
+                QString hexString = QString::fromLocal8Bit(buffer).trimmed();
+
+                if (hexString.length() != 64)
+                {
+                    MYWARNING << "Error: activation key must be exactly 64 hex characters.";
+                    continue;
+                }
+
+                // Verify only hex characters
+                bool isValidHex = true;
+                for (const QChar &c : hexString)
+                {
+                    if (!c.isDigit() && (c.toLower() < 'a' || c.toLower() > 'f'))
+                    {
+                        isValidHex = false;
+                        break;
+                    }
+                }
+
+                if (!isValidHex)
+                {
+                    MYWARNING << "Error: activation key contains invalid characters. Use only 0-9 and A-F.\n";
+                    continue;
+                }
+
+                // Convert from hex to bytes
+                activationKeyBytes = QByteArray::fromHex(hexString.toUtf8());
+
+                if (activationKeyBytes.size() == 32)
+                {
+                    validKey = true;
+                    MYINFO << "Activation key accepted.\n";
+                }
+                else
+                {
+                    MYWARNING << "Error in activation key conversion.\n";
+                }
+            }
+
             LicenseServerInterface license(settings);
-            humToken = license.requestValidatedToken(settings.activationKey.toUtf8(), systemStore.getTempToken());
+            humToken = license.requestValidatedToken(activationKeyBytes, systemStore.getTempToken());
+
             if (humToken.isEmpty())
             {
                 MYCRITICAL << "License validation error. System in test mode.";
@@ -82,6 +171,7 @@ int main(int argc, char *argv[]) {
             else
             {
                 systemStore.setToken(humToken.toHex());
+                settings.activationKeyBytes = activationKeyBytes;
                 MYINFO << "License valid. System fully operational";
                 newDevice = false;
                 unregistered = false;
@@ -99,7 +189,7 @@ int main(int argc, char *argv[]) {
                 {
                     MYWARNING << "Token validity expired, internet connection required for renewal";
 
-                    humToken = license.requestValidatedToken(settings.activationKey.toUtf8(), systemStore.getTempToken());
+                    humToken = license.requestValidatedToken(settings.activationKeyBytes, systemStore.getTempToken());
                     if (humToken.isEmpty())
                     {
                         MYCRITICAL << "License validation error. System in test mode.";

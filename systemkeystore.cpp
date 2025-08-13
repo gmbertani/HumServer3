@@ -44,8 +44,9 @@ void SystemKeyStore::createTempToken(QString& ctrlID)
 {
     QByteArray utf8 = ctrlID.toUtf8();
     tempToken.setControllerID(utf8.constData());
-    tempToken.setCheckTime( QDate::currentDate() );
+    tempToken.setCheckTime(QDate::currentDate());
     tempToken.setFingerprint(getFingerprint());
+    tempToken.setValidatedKey(QByteArray(32, '\0'));
 }
 
 bool SystemKeyStore::isTokenStillValid(QString& ctrlID)

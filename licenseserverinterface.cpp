@@ -85,21 +85,38 @@ QByteArray LicenseServerInterface::requestValidatedToken(const QByteArray &activ
 
     MYINFO << "TLS connection successful!";
 
-
-    QByteArray payload;
-    payload.append('1');
-    payload.append(activationKey);           
-    payload.append(incompleteToken);         
-
-    socket.write(payload);
-
-    if (!socket.waitForBytesWritten(2000))
+    // 1. Invia il comando (1 byte)
+    QByteArray command;
+    command.append('1');
+    socket.write(command);
+    if (!socket.waitForBytesWritten(1000))
     {
-        MYWARNING << "Failed to send token validation request:" << socket.errorString();
+        MYWARNING << "Failed to send command:" << socket.errorString();
         return {};
     }
 
-    if (!socket.waitForReadyRead(3000))
+    // 2. Invia activation key (32 bytes)
+    MYINFO << "sending activation key: " << activationKey;
+    MYINFO << "activation key length: " << activationKey.length();
+    socket.write(activationKey);
+    if (!socket.waitForBytesWritten(1000))
+    {
+        MYWARNING << "Failed to send activation key:" << socket.errorString();
+        return {};
+    }
+
+    // 3. Invia token (deve essere TOKEN_FIXED_SIZE = 88 bytes)
+    MYINFO << "sending token: " << incompleteToken;
+    MYINFO << "token length: " << incompleteToken.length();
+    socket.write(incompleteToken);
+    if (!socket.waitForBytesWritten(2000))
+    {
+        MYWARNING << "Failed to send token:" << socket.errorString();
+        return {};
+    }
+
+    // 4. Leggi risposta entro 20 secondi
+    if (!socket.waitForReadyRead(20000))
     {
         MYWARNING << "No response from license server.";
         return {};
@@ -107,7 +124,6 @@ QByteArray LicenseServerInterface::requestValidatedToken(const QByteArray &activ
 
     QByteArray response = socket.readAll();
     socket.disconnectFromHost();
-
     return response;
 }
 

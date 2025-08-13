@@ -40,8 +40,8 @@ public:
 
     // License
     QString licenseServerSite;
-    QString serverCertName;    //il certificato si trova sempre insieme all'exe
-    QString activationKey;     //questa non ha requisiti di sicurezza, diversamente dalla validated key
+    QString serverCertName;             //il certificato si trova sempre insieme all'exe
+    QByteArray activationKeyBytes;      //questa non ha requisiti di sicurezza, diversamente dalla validated key
     int licenseServerPort;
 
     // GUI

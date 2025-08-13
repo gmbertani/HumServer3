@@ -91,14 +91,14 @@ public:
     {
         QByteArray out;
 
-        out.append(controllerID.toUtf8().leftJustified(20, '\0', true));
-        out.append(fingerprint.leftJustified(32, '\0', true));
+        out.append(controllerID.toUtf8().leftJustified(20, '\0', false));
+        out.append(fingerprint.leftJustified(32, '\0', false));
 
         quint32 timestamp = checkTime.startOfDay().toSecsSinceEpoch();
         quint32 be = qToBigEndian(timestamp);
         out.append(reinterpret_cast<const char*>(&be), 4);
 
-        out.append(validatedKey.leftJustified(32, '\0', true));
+        out.append(validatedKey.leftJustified(32, '\0', false));
 
         return out;
     }
