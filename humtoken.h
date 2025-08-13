@@ -41,7 +41,7 @@ public:
 
     void setControllerID(const QString &id)
     {
-        controllerID = id.trimmed().left(20);
+        controllerID = id.trimmed().left(19); //20th is the string terminator
     }
 
     void setFingerprint(const QByteArray &fp)
@@ -108,20 +108,20 @@ public:
     {
         HumToken token;
 
-        if (data.size() < 88)  // Check lunghezza minima
+        if (data.size() != 88)  // Check lunghezza
         {
             qWarning() << "HumToken::fromByteArray() - invalid token size:" << data.size();
             return token; // probabilmente oggetto vuoto
         }
 
-        // controllerID: 20 byte
-        token.controllerID = QString::fromUtf8(data.constData(), 20).trimmed();
+        // controllerID: 19 byte + terminator
+        token.controllerID = QString::fromUtf8(data.constData(), 19).trimmed();
 
         // fingerprint: 32 byte
         token.fingerprint = QByteArray(data.constData() + 20, 32);
 
         // checkTime: 4 byte, uint32 big endian → QDate
-        quint32 timestamp;
+        qint32 timestamp;
         memcpy(&timestamp, data.constData() + 52, 4);
         timestamp = qFromBigEndian(timestamp);
         token.checkTime = QDateTime::fromSecsSinceEpoch(timestamp).date();
@@ -136,7 +136,7 @@ private:
 
 
 private:
-    QString  controllerID;     // Fixed-size 20 chr null-terminated ASCII ID
+    QString  controllerID;     // Fixed-size 20 chr null-terminated ASCII ID (19chr + \0)
     QByteArray fingerprint;    // Hardware fingerprint (32 bytes typical)
     QDate checkTime;           // Reference date (e.g., license check)
     QByteArray validatedKey;  // Activation key

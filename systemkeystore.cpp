@@ -11,11 +11,11 @@
 SystemKeyStore::SystemKeyStore(QObject *parent)
     : QObject(parent)
 {
-    // Registry / config root: SOFTWARE\NUR\HumServer
+    // Registry / config root: HKEY_CURRENT_USER\SOFTWARE\NUR\HumServer
     QCoreApplication::setOrganizationName("NUR");
     QCoreApplication::setApplicationName("HumServer");
 
-    settings = new QSettings(QSettings::NativeFormat,
+    registry = new QSettings(QSettings::NativeFormat,
                              QSettings::UserScope,
                              QCoreApplication::organizationName(),
                              QCoreApplication::applicationName(),
@@ -37,7 +37,7 @@ QByteArray SystemKeyStore::getToken()
         MYDEBUG << "[SystemKeyStore] Loaded existing hum_token:" << token;
     }
 
-    return token;
+    return  QByteArray::fromHex(token);
 }
 
 void SystemKeyStore::createTempToken(QString& ctrlID)
@@ -49,17 +49,20 @@ void SystemKeyStore::createTempToken(QString& ctrlID)
     tempToken.setValidatedKey(QByteArray(32, '\0'));
 }
 
-bool SystemKeyStore::isTokenStillValid(QString& ctrlID)
+bool SystemKeyStore::isTokenStillValid(QString ctrlID)
 {
     QDate today = QDate::currentDate();
     QByteArray fingerprint = getFingerprint();
     bool valid = false;
 
-    if(tempToken.getFingerprint() == fingerprint)
+    QString storedFingerprint = tempToken.getFingerprint();
+    if(storedFingerprint == fingerprint)
     {
-        if(tempToken.getControllerID() == ctrlID)
+        QString storedControllerID = tempToken.getControllerID().trimmed();
+        if(storedControllerID == ctrlID)
         {
-            if(tempToken.getCheckTime() > today)
+            QDate checkTime = tempToken.getCheckTime();
+            if(checkTime > today)
             {
                 valid = true;
             }
@@ -93,24 +96,27 @@ bool SystemKeyStore::isTokenExpired(QString& ctrlID)
 
 
 
-
 void SystemKeyStore::setToken(const QByteArray &token)
 {
     writeToken(token);
 }
 
-QByteArray SystemKeyStore::readToken()
-{
-    QByteArray token = settings->value("hum_token").toByteArray();
-    tempToken = HumToken::fromByteArray(token);
-    return token;
-}
-
 void SystemKeyStore::writeToken(const QByteArray &token)
 {
-    tempToken = HumToken::fromByteArray(token);
-    settings->setValue("hum_token", token);
-    settings->sync();
+    //il token scritto nel registry è una stringa hex
+    //per cui ad ogni byte corrispondono due caratteri
+
+    registry->setValue("hum_token", token.toHex());
+    registry->sync();
+}
+
+QByteArray SystemKeyStore::readToken()
+{
+    //per leggere il token occorre convertire la stringa hex di 176 caratteri
+    //in un QByteArray di 88 bytes
+    QByteArray hexToken = registry->value("hum_token").toByteArray();
+    tempToken = HumToken::fromByteArray(QByteArray::fromHex(hexToken));
+    return tempToken.toByteArray();
 }
 
 QByteArray SystemKeyStore::getFingerprint()

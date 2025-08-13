@@ -170,9 +170,9 @@ int main(int argc, char *argv[]) {
             }
             else
             {
-                systemStore.setToken(humToken.toHex());
+                systemStore.setToken(humToken);
                 settings.activationKeyBytes = activationKeyBytes;
-                MYINFO << "License valid. System fully operational";
+                MYINFO << "New license valid, renewal date: " << systemStore.renewalDate() << ", system fully operational";
                 newDevice = false;
                 unregistered = false;
             }
@@ -211,8 +211,11 @@ int main(int argc, char *argv[]) {
                     unregistered = true;
                 }
             }
-
-            //token valido
+            else
+            {
+                MYINFO << "License valid, renewal date: " << systemStore.renewalDate() << ", system fully operational";
+                unregistered = false;
+            }
         }
     }
     else

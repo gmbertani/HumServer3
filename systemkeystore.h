@@ -22,11 +22,16 @@ public:
         return tempToken.toByteArray();
     }
 
-    bool isTokenStillValid(QString& ctrlID);
+    QString renewalDate()
+    {
+        return tempToken.getCheckTime().toString();
+    }
+
+    bool isTokenStillValid(QString ctrlID);
     bool isTokenExpired(QString& ctrlID);
 
 private:
-    QSettings *settings;
+    QSettings *registry;
     HumToken tempToken;
 
     QByteArray readToken();
